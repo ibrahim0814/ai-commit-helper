@@ -1,10 +1,10 @@
 # AI Commit Helper 🤖
 
-Ultra token-efficient AI-powered git commit message generator using Claude 3 Haiku. Analyzes your actual code changes to generate meaningful conventional commit messages.
+Ultra token-efficient AI-powered git commit message generator using Claude 3.5 Haiku. Analyzes your actual code changes to generate meaningful conventional commit messages.
 
 ## ✨ Features
 
-- **🧠 AI-Powered**: Analyzes git diff content using Claude 3 Haiku
+- **🧠 AI-Powered**: Analyzes git diff content using Claude 3.5 Haiku
 - **💰 Ultra Cheap**: ~$0.00025 per commit (typically <1¢ per day)
 - **⚡ Token Efficient**: Aggressive optimization for minimal API costs
 - **🔄 Smart Fallback**: Enhanced conventional commit logic when AI unavailable
@@ -13,11 +13,11 @@ Ultra token-efficient AI-powered git commit message generator using Claude 3 Hai
 
 ## 💸 Cost Breakdown
 
-- **Input**: ~500 chars avg diff = ~$0.0001 per commit
-- **Output**: ~30 chars avg message = ~$0.00004 per commit  
-- **Total**: **~$0.00015 per commit** (basically free!)
+- **Input**: ~500 chars avg diff = ~$0.0004 per commit
+- **Output**: ~30 chars avg message = ~$0.0001 per commit  
+- **Total**: **~$0.0005 per commit** (still very affordable!)
 
-Uses Claude 3 Haiku - the most cost-efficient model available.
+Uses Claude 3.5 Haiku - fast, efficient, and enhanced capabilities.
 
 ## 🚀 Installation
 
@@ -77,7 +77,7 @@ The AI analyzes your actual code changes and generates conventional commit messa
 ## ⚙️ How It Works
 
 1. **Stage Changes**: Automatically runs `git add .`
-2. **Analyze Diff**: Sends git diff to Claude 3 Haiku (truncated to 2000 chars)
+2. **Analyze Diff**: Sends git diff to Claude 3.5 Haiku (truncated to 2000 chars)
 3. **Generate Message**: AI creates conventional commit message
 4. **Confirmation**: Shows message and asks for approval
 5. **Commit & Push**: Commits and pushes to main/master branch

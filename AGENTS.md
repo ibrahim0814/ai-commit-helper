@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Project Overview
-AI Commit Helper is a bash script that generates intelligent git commit messages using Claude 3 Haiku. It analyzes git diffs to create conventional commit messages with minimal API costs (~$0.00015 per commit).
+AI Commit Helper is a bash script that generates intelligent git commit messages using Claude 3.5 Haiku. It analyzes git diffs to create conventional commit messages with affordable API costs (~$0.0005 per commit).
 
 ## Setup Commands
 ```bash
@@ -44,7 +44,7 @@ qc view
 ## API Integration Guidelines
 - **Token Optimization**: Keep diff content under 2000 chars to minimize costs
 - **Error Handling**: Always provide fallback to basic commit generation
-- **Rate Limiting**: No special handling needed - Claude 3 Haiku has generous limits
+- **Rate Limiting**: No special handling needed - Claude 3.5 Haiku has generous limits
 - **Response Validation**: Ensure commit messages are 5-80 characters and valid
 
 ## Security Considerations
@@ -77,7 +77,7 @@ ai-commit-helper/
 curl -s -X POST "https://api.anthropic.com/v1/messages" \
   -H "x-api-key: $ANTHROPIC_API_KEY" \
   -H "anthropic-version: 2023-06-01" \
-  -d '{"model":"claude-3-haiku-20240307","max_tokens":50,"messages":[{"role":"user","content":"test"}]}'
+  -d '{"model":"claude-3-5-haiku-20241022","max_tokens":50,"messages":[{"role":"user","content":"test"}]}'
 ```
 3. Check fallback logic works: `unset ANTHROPIC_API_KEY && qc view`
 

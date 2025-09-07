@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # AI-powered commit message generator
-# Ultra token-efficient using Claude 3 Haiku (cheapest model)
-# Cost: ~$0.00025 per 1K input tokens, ~$0.00125 per 1K output tokens
+# Ultra token-efficient using Claude 3.5 Haiku (fast and efficient model)
+# Cost: ~$0.80 per 1M input tokens, ~$4.00 per 1M output tokens
 
 generate_ai_commit_message() {
     local diff_content
@@ -26,33 +26,48 @@ generate_ai_commit_message() {
         diff_content="${diff_content:0:2000}...[truncated]"
     fi
     
-    # Super concise prompt to minimize input tokens
-    local prompt="Git diff analysis. Generate 1 conventional commit message (type: description). Max 60 chars. Types: feat,fix,docs,style,refactor,test,chore.
+    # Concise prompt for structured response
+    local prompt="Analyze this git diff and generate a conventional commit message. Use types: feat, fix, docs, style, refactor, test, chore.
 
 Diff:
-$diff_content
+$diff_content"
 
-Message:"
-
-    # Make API call to Claude 3 Haiku (cheapest model)
+    # Make API call to Claude 3.5 Haiku with structured output
     local response
     response=$(curl -s -X POST "https://api.anthropic.com/v1/messages" \
         -H "Content-Type: application/json" \
         -H "x-api-key: $ANTHROPIC_API_KEY" \
         -H "anthropic-version: 2023-06-01" \
         -d "{
-            \"model\": \"claude-3-haiku-20240307\",
-            \"max_tokens\": 50,
+            \"model\": \"claude-3-5-haiku-20241022\",
+            \"max_tokens\": 100,
             \"temperature\": 0.1,
+            \"tool_choice\": {\"type\": \"tool\", \"name\": \"commit_message\"},
+            \"tools\": [{
+                \"name\": \"commit_message\",
+                \"description\": \"Generate a conventional commit message\",
+                \"input_schema\": {
+                    \"type\": \"object\",
+                    \"properties\": {
+                        \"message\": {
+                            \"type\": \"string\",
+                            \"description\": \"Conventional commit message in format 'type: description'\",
+                            \"maxLength\": 60
+                        }
+                    },
+                    \"required\": [\"message\"]
+                }
+            }],
             \"messages\": [{
                 \"role\": \"user\",
                 \"content\": $(printf '%s' "$prompt" | jq -R -s .)
             }]
         }" 2>/dev/null)
     
-    # Extract the commit message from the response
+    # Extract the commit message from structured response
     if [ $? -eq 0 ] && [ -n "$response" ]; then
-        commit_msg=$(echo "$response" | jq -r '.content[0].text // empty' 2>/dev/null | tr -d '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | head -c 72)
+        # Extract commit message from tool use response
+        commit_msg=$(echo "$response" | jq -r '.content[0].input.message // empty' 2>/dev/null | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | head -c 72)
         
         # Validate the response
         if [ -n "$commit_msg" ] && [ "$commit_msg" != "null" ] && [ ${#commit_msg} -gt 5 ] && [ ${#commit_msg} -lt 80 ]; then
@@ -194,15 +209,8 @@ qc() {
         echo "🧠 Generating commit message..."
         commit_msg=$(generate_commit_message)
         
-        # Show the generated message and ask for confirmation
-        echo "📝 Generated commit message: '$commit_msg'"
-        echo -n "🤔 Use this message? [Y/n]: "
-        read -r response
-        
-        if [[ "$response" =~ ^[Nn] ]]; then
-            echo -n "✏️  Enter your commit message: "
-            read -r commit_msg
-        fi
+        # Show the generated message
+        echo "📝 Using commit message: '$commit_msg'"
     fi
     
     if [ -z "$commit_msg" ]; then
@@ -235,8 +243,8 @@ qc() {
 qc_setup() {
     echo "🔧 AI Commit Helper Setup"
     echo ""
-    echo "💰 Cost info: Uses Claude 3 Haiku (ultra cheap!)"
-    echo "   ~\$0.00025 per request (typically <1 cent per day)"
+    echo "💰 Cost info: Uses Claude 3.5 Haiku (fast and efficient!)"
+    echo "   ~\$0.0008 input + \$0.0002 output per request (still very affordable)"
     echo ""
     echo "🔑 Setup:"
     echo "1. Get API key: https://console.anthropic.com/"

@@ -199,27 +199,31 @@ qc() {
     echo "📦 Adding all changes..."
     git add .
     
-    if git diff --cached --quiet; then
-        echo "ℹ️  No changes to commit"
-        return 0
+    local has_changes=false
+    if ! git diff --cached --quiet; then
+        has_changes=true
     fi
     
-    local commit_msg="$1"
-    if [ -z "$commit_msg" ]; then
-        echo "🧠 Generating commit message..."
-        commit_msg=$(generate_commit_message)
+    if [ "$has_changes" = true ]; then
+        local commit_msg="$1"
+        if [ -z "$commit_msg" ]; then
+            echo "🧠 Generating commit message..."
+            commit_msg=$(generate_commit_message)
+            
+            # Show the generated message
+            echo "📝 Using commit message: '$commit_msg'"
+        fi
         
-        # Show the generated message
-        echo "📝 Using commit message: '$commit_msg'"
+        if [ -z "$commit_msg" ]; then
+            echo "❌ No commit message provided"
+            return 1
+        fi
+        
+        echo "💾 Committing changes: $commit_msg"
+        git commit -m "$commit_msg"
+    else
+        echo "ℹ️  No new changes to commit"
     fi
-    
-    if [ -z "$commit_msg" ]; then
-        echo "❌ No commit message provided"
-        return 1
-    fi
-    
-    echo "💾 Committing changes: $commit_msg"
-    git commit -m "$commit_msg"
     
     # Determine default branch
     local default_branch
@@ -235,8 +239,16 @@ qc() {
     fi
     
     echo "🚀 Pushing to origin/$default_branch..."
-    git push origin "$default_branch"
-    echo "✅ Successfully committed and pushed to $default_branch!"
+    if git push origin "$default_branch"; then
+        if [ "$has_changes" = true ]; then
+            echo "✅ Successfully committed and pushed to $default_branch!"
+        else
+            echo "✅ Successfully pushed to $default_branch!"
+        fi
+    else
+        echo "❌ Failed to push to $default_branch"
+        return 1
+    fi
 }
 
 # Additional utility functions

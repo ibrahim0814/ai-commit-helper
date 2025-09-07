@@ -1,0 +1,259 @@
+#!/bin/bash
+
+# AI-powered commit message generator
+# Ultra token-efficient using Claude 3 Haiku (cheapest model)
+# Cost: ~$0.00025 per 1K input tokens, ~$0.00125 per 1K output tokens
+
+generate_ai_commit_message() {
+    local diff_content
+    local commit_msg
+    
+    # Get the staged diff
+    diff_content=$(git diff --cached)
+    
+    # Check if we have changes
+    if [ -z "$diff_content" ]; then
+        return 1
+    fi
+    
+    # Check if API key is available
+    if [ -z "$ANTHROPIC_API_KEY" ]; then
+        return 1
+    fi
+    
+    # Aggressively truncate diff to minimize tokens (keep only first 2000 chars)
+    if [ ${#diff_content} -gt 2000 ]; then
+        diff_content="${diff_content:0:2000}...[truncated]"
+    fi
+    
+    # Super concise prompt to minimize input tokens
+    local prompt="Git diff analysis. Generate 1 conventional commit message (type: description). Max 60 chars. Types: feat,fix,docs,style,refactor,test,chore.
+
+Diff:
+$diff_content
+
+Message:"
+
+    # Make API call to Claude 3 Haiku (cheapest model)
+    local response
+    response=$(curl -s -X POST "https://api.anthropic.com/v1/messages" \
+        -H "Content-Type: application/json" \
+        -H "x-api-key: $ANTHROPIC_API_KEY" \
+        -H "anthropic-version: 2023-06-01" \
+        -d "{
+            \"model\": \"claude-3-haiku-20240307\",
+            \"max_tokens\": 50,
+            \"temperature\": 0.1,
+            \"messages\": [{
+                \"role\": \"user\",
+                \"content\": $(printf '%s' "$prompt" | jq -R -s .)
+            }]
+        }" 2>/dev/null)
+    
+    # Extract the commit message from the response
+    if [ $? -eq 0 ] && [ -n "$response" ]; then
+        commit_msg=$(echo "$response" | jq -r '.content[0].text // empty' 2>/dev/null | tr -d '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | head -c 72)
+        
+        # Validate the response
+        if [ -n "$commit_msg" ] && [ "$commit_msg" != "null" ] && [ ${#commit_msg} -gt 5 ] && [ ${#commit_msg} -lt 80 ]; then
+            echo "$commit_msg"
+            return 0
+        fi
+    fi
+    
+    # If AI failed, return error to fall back
+    return 1
+}
+
+# Enhanced generate_commit_message with AI integration
+generate_commit_message() {
+    # Try AI first if API key is available
+    if [ -n "$ANTHROPIC_API_KEY" ]; then
+        local ai_msg
+        ai_msg=$(generate_ai_commit_message 2>/dev/null)
+        if [ $? -eq 0 ] && [ -n "$ai_msg" ]; then
+            echo "$ai_msg"
+            return 0
+        fi
+    fi
+    
+    # Fallback to enhanced basic logic
+    local msg=""
+    local added_files=$(git diff --cached --name-status | grep "^A" | wc -l | tr -d ' ')
+    local modified_files=$(git diff --cached --name-status | grep "^M" | wc -l | tr -d ' ')
+    local deleted_files=$(git diff --cached --name-status | grep "^D" | wc -l | tr -d ' ')
+    local renamed_files=$(git diff --cached --name-status | grep "^R" | wc -l | tr -d ' ')
+    
+    # File type detection
+    local js_files=$(git diff --cached --name-only | grep -E '\.(js|jsx|ts|tsx)$' | wc -l | tr -d ' ')
+    local py_files=$(git diff --cached --name-only | grep -E '\.py$' | wc -l | tr -d ' ')
+    local css_files=$(git diff --cached --name-only | grep -E '\.(css|scss|sass)$' | wc -l | tr -d ' ')
+    local md_files=$(git diff --cached --name-only | grep -E '\.md$' | wc -l | tr -d ' ')
+    local config_files=$(git diff --cached --name-only | grep -E '\.(json|yaml|yml|toml|ini|conf)$' | wc -l | tr -d ' ')
+    local docker_files=$(git diff --cached --name-only | grep -E '(Dockerfile|docker-compose)' | wc -l | tr -d ' ')
+    local test_files=$(git diff --cached --name-only | grep -iE '(test|spec)' | wc -l | tr -d ' ')
+    local readme_files=$(git diff --cached --name-only | grep -iE 'readme' | wc -l | tr -d ' ')
+    
+    # Enhanced logic for commit message generation with conventional commits
+    if [ "$added_files" -gt 0 ] && [ "$modified_files" -eq 0 ] && [ "$deleted_files" -eq 0 ]; then
+        if [ "$added_files" -eq 1 ]; then
+            local filename=$(git diff --cached --name-only | head -1 | basename)
+            msg="feat: add $filename"
+        else
+            msg="feat: add $added_files new files"
+        fi
+    elif [ "$deleted_files" -gt 0 ] && [ "$added_files" -eq 0 ] && [ "$modified_files" -eq 0 ]; then
+        if [ "$deleted_files" -eq 1 ]; then
+            msg="chore: remove file"
+        else
+            msg="chore: remove $deleted_files files"
+        fi
+    elif [ "$renamed_files" -gt 0 ]; then
+        msg="refactor: rename and update files"
+    elif [ "$modified_files" -gt 0 ]; then
+        if [ "$test_files" -gt 0 ]; then
+            msg="test: update tests"
+        elif [ "$readme_files" -gt 0 ]; then
+            msg="docs: update documentation"
+        elif [ "$config_files" -gt 0 ]; then
+            msg="chore: update configuration"
+        elif [ "$docker_files" -gt 0 ]; then
+            msg="chore: update Docker configuration"
+        elif [ "$css_files" -gt 0 ] && [ "$js_files" -eq 0 ] && [ "$py_files" -eq 0 ]; then
+            msg="style: update styles"
+        elif [ "$js_files" -gt 0 ]; then
+            msg="feat: update JavaScript code"
+        elif [ "$py_files" -gt 0 ]; then
+            msg="feat: update Python code"
+        elif [ "$md_files" -gt 0 ]; then
+            msg="docs: update documentation"
+        else
+            msg="feat: update code"
+        fi
+    else
+        local total_changes=$((added_files + modified_files + deleted_files))
+        msg="chore: update codebase ($total_changes files changed)"
+    fi
+    
+    # Add scope indicators for large changes
+    local total_files=$((added_files + modified_files + deleted_files + renamed_files))
+    if [ "$total_files" -gt 10 ]; then
+        msg="$msg - major refactor"
+    elif [ "$total_files" -gt 5 ]; then
+        msg="$msg - multiple changes"
+    fi
+    
+    echo "$msg"
+}
+
+# Enhanced quick commit function with AI integration
+qc() {
+    # Handle 'view' argument for preview
+    if [ "$1" = "view" ]; then
+        if ! git rev-parse --git-dir > /dev/null 2>&1; then
+            echo "❌ Not in a git repository"
+            return 1
+        fi
+        
+        git add .
+        
+        if git diff --cached --quiet; then
+            echo "ℹ️  No changes to commit"
+            return 0
+        fi
+        
+        echo "📝 Would commit with message:"
+        generate_commit_message
+        echo ""
+        echo "📊 Changes summary:"
+        git diff --cached --stat
+        return 0
+    fi
+    
+    # Handle 'setup' argument for configuration help
+    if [ "$1" = "setup" ]; then
+        qc_setup
+        return 0
+    fi
+    
+    if ! git rev-parse --git-dir > /dev/null 2>&1; then
+        echo "❌ Not in a git repository"
+        return 1
+    fi
+    
+    echo "📦 Adding all changes..."
+    git add .
+    
+    if git diff --cached --quiet; then
+        echo "ℹ️  No changes to commit"
+        return 0
+    fi
+    
+    local commit_msg="$1"
+    if [ -z "$commit_msg" ]; then
+        echo "🧠 Generating commit message..."
+        commit_msg=$(generate_commit_message)
+        
+        # Show the generated message and ask for confirmation
+        echo "📝 Generated commit message: '$commit_msg'"
+        echo -n "🤔 Use this message? [Y/n]: "
+        read -r response
+        
+        if [[ "$response" =~ ^[Nn] ]]; then
+            echo -n "✏️  Enter your commit message: "
+            read -r commit_msg
+        fi
+    fi
+    
+    if [ -z "$commit_msg" ]; then
+        echo "❌ No commit message provided"
+        return 1
+    fi
+    
+    echo "💾 Committing changes: $commit_msg"
+    git commit -m "$commit_msg"
+    
+    # Determine default branch
+    local default_branch
+    default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+    if [ -z "$default_branch" ]; then
+        if git show-ref --verify --quiet refs/heads/main; then
+            default_branch="main"
+        elif git show-ref --verify --quiet refs/heads/master; then
+            default_branch="master"
+        else
+            default_branch=$(git branch --show-current)
+        fi
+    fi
+    
+    echo "🚀 Pushing to origin/$default_branch..."
+    git push origin "$default_branch"
+    echo "✅ Successfully committed and pushed to $default_branch!"
+}
+
+# Additional utility functions
+qc_setup() {
+    echo "🔧 AI Commit Helper Setup"
+    echo ""
+    echo "💰 Cost info: Uses Claude 3 Haiku (ultra cheap!)"
+    echo "   ~\$0.00025 per request (typically <1 cent per day)"
+    echo ""
+    echo "🔑 Setup:"
+    echo "1. Get API key: https://console.anthropic.com/"
+    echo "2. Add to ~/.zshrc:"
+    echo "   export ANTHROPIC_API_KEY='your-api-key-here'"
+    echo "3. Reload: source ~/.zshrc"
+    echo ""
+    echo "📚 Usage:"
+    echo "   qc           - AI-powered commit"
+    echo "   qc view      - Preview commit message"
+    echo "   qc setup     - Show this help"
+    echo "   qc 'msg'     - Custom commit message"
+    echo ""
+    echo "💡 Without API key: Falls back to enhanced basic generation"
+}
+
+# If script is called directly, show setup info
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    qc_setup
+fi

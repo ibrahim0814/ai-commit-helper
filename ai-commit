@@ -74,6 +74,9 @@ generate_commit_message() {
         if [ $? -eq 0 ] && [ -n "$ai_msg" ]; then
             echo "$ai_msg"
             return 0
+        else
+            # Debug: AI failed, falling back
+            echo "⚠️  AI generation failed, using fallback logic" >&2
         fi
     fi
     

@@ -164,9 +164,6 @@ qc() {
         
         echo "📝 Would commit with message:"
         generate_commit_message
-        echo ""
-        echo "📊 Changes summary:"
-        git diff --cached --stat
         return 0
     fi
     

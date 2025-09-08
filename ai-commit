@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # AI-powered commit message generator
-# Ultra token-efficient using Claude 3.5 Haiku (fast and efficient model)
+# Using Claude 3.5 Haiku with unlimited diff size for comprehensive analysis
 # Cost: ~$0.80 per 1M input tokens, ~$4.00 per 1M output tokens
+# Very affordable at ~$0.0005-0.002 per commit
 
 generate_ai_commit_message() {
     local diff_content
@@ -21,16 +22,43 @@ generate_ai_commit_message() {
         return 1
     fi
     
-    # Aggressively truncate diff to minimize tokens (keep only first 2000 chars)
-    if [ ${#diff_content} -gt 2000 ]; then
-        diff_content="${diff_content:0:2000}...[truncated]"
+    # No truncation - send entire diff for comprehensive analysis
+    # Claude 3.5 Haiku can handle large contexts efficiently
+    
+    # Get file summary for context
+    local changed_files=$(git diff --cached --name-only)
+    local file_count=$(echo "$changed_files" | wc -l | tr -d ' ')
+    local file_summary=""
+    if [ "$file_count" -gt 0 ]; then
+        file_summary="Files changed ($file_count): $(echo "$changed_files" | tr '\n' ', ' | sed 's/, $//')"
     fi
     
-    # Concise prompt for structured response
-    local prompt="Analyze this git diff and generate a conventional commit message. Use types: feat, fix, docs, style, refactor, test, chore.
+    # Enhanced prompt for better analysis
+    local prompt="You are analyzing a git diff to generate a high-quality conventional commit message. 
 
-Diff:
-$diff_content"
+CONTEXT:
+$file_summary
+
+INSTRUCTIONS:
+1. Analyze ALL changes across ALL files in the diff
+2. Identify the primary purpose/theme of this commit
+3. If multiple unrelated changes exist, focus on the most significant one
+4. Use conventional commit format: type(scope): description
+5. Types: feat, fix, docs, style, refactor, test, chore, ci, perf
+6. Keep message under 60 characters
+7. Be specific and descriptive, not generic
+
+EXAMPLES:
+- feat(auth): add OAuth2 login integration
+- fix(api): resolve user data validation error  
+- refactor(ui): restructure component hierarchy
+- docs: update installation instructions
+- test: add unit tests for payment module
+
+Git diff:
+$diff_content
+
+Generate a commit message that accurately reflects the overall changes made."
 
     # Make API call to Claude 3.5 Haiku with structured output
     local response
@@ -255,8 +283,8 @@ qc() {
 qc_setup() {
     echo "🔧 AI Commit Helper Setup"
     echo ""
-    echo "💰 Cost info: Uses Claude 3.5 Haiku (fast and efficient!)"
-    echo "   ~\$0.0008 input + \$0.0002 output per request (still very affordable)"
+    echo "💰 Cost info: Uses Claude 3.5 Haiku (fast and comprehensive!)"
+    echo "   ~\$0.0005-0.002 per commit (ultra affordable with full diff analysis)"
     echo ""
     echo "🔑 Setup:"
     echo "1. Get API key: https://console.anthropic.com/"

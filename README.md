@@ -1,23 +1,23 @@
 # AI Commit Helper 🤖
 
-Ultra token-efficient AI-powered git commit message generator using Claude 3.5 Haiku. Analyzes your actual code changes to generate meaningful conventional commit messages.
+Comprehensive AI-powered git commit message generator using Claude 3.5 Haiku. Analyzes your complete code changes (unlimited diff size) to generate meaningful conventional commit messages at ultra-low cost.
 
 ## ✨ Features
 
 - **🧠 AI-Powered**: Analyzes git diff content using Claude 3.5 Haiku
-- **💰 Ultra Cheap**: ~$0.00025 per commit (typically <1¢ per day)
-- **⚡ Token Efficient**: Aggressive optimization for minimal API costs
+- **💰 Ultra Cheap**: ~$0.0005-0.002 per commit (ultra affordable!)
+- **📊 Complete Analysis**: No diff size limits - analyzes entire changeset
 - **🔄 Smart Fallback**: Enhanced conventional commit logic when AI unavailable
 - **🎯 Interactive**: Shows generated message with confirmation prompt
 - **📊 Preview Mode**: See what would be committed without committing
 
 ## 💸 Cost Breakdown
 
-- **Input**: ~500 chars avg diff = ~$0.0004 per commit
-- **Output**: ~30 chars avg message = ~$0.0001 per commit  
-- **Total**: **~$0.0005 per commit** (still very affordable!)
+- **Input**: Variable diff size (no limits) = ~$0.0004-0.0016 per commit
+- **Output**: ~50 chars avg message = ~$0.0002 per commit  
+- **Total**: **~$0.0005-0.002 per commit** (ultra affordable!)
 
-Uses Claude 3.5 Haiku - fast, efficient, and enhanced capabilities.
+Uses Claude 3.5 Haiku - fast, efficient, and now with complete diff analysis for comprehensive understanding of all changes.
 
 ## 🚀 Installation
 
@@ -77,17 +77,19 @@ The AI analyzes your actual code changes and generates conventional commit messa
 ## ⚙️ How It Works
 
 1. **Stage Changes**: Automatically runs `git add .`
-2. **Analyze Diff**: Sends git diff to Claude 3.5 Haiku (truncated to 2000 chars)
+2. **Analyze Diff**: Sends complete git diff to Claude 3.5 Haiku (no size limits)
 3. **Generate Message**: AI creates conventional commit message
 4. **Confirmation**: Shows message and asks for approval
 5. **Commit & Push**: Commits and pushes to main/master branch
 
 ## 🔧 Configuration
 
-### Token Optimization
-- Max 2000 chars diff input (prevents excessive costs)
-- Max 50 tokens output (concise messages)
+### Comprehensive Analysis
+- Unlimited diff size (complete changeset analysis)
+- Enhanced prompting for multi-file change understanding
+- File summary context for better commit message accuracy
 - Temperature 0.1 (consistent, focused responses)
+- Ultra-efficient with Claude 3.5 Haiku's improved capabilities
 
 ### Fallback Logic
 Without API key, generates enhanced conventional commits based on:
